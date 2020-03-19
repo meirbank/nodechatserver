@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="utf-8" />
+        <meta name="format-detection" content="telephone=no" />
+        <meta name="msapplication-tap-highlight" content="no" />
+
+        <meta name="viewport" content="user-scalable=no, initial-scale=1, maximum-scale=1, minimum-scale=1, width=device-width, height=device-height, target-densitydpi=medium-dpi" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/materialize/0.97.5/css/materialize.min.css">
+
+<style>
+body{
+    min-width: 335px;
+    overflow-x: auto;
+}
+    .login-signup-card{
+        width:90%;
+        min-width: 300px;
+        margin-left:5%;
+        height:auto;
+        margin-top: 30px;
+
+    }
+    @media screen and (min-width: 400px){
+
+        .login-signup-card{
+            width: 360px;
+            margin-left: calc(50% - 180px);
+            margin-top: 5%;
+        }
+
+    }
+    .login-logo{
+        display: block;
+        margin: 0 auto;
+        margin-top: 10px;
+        margin-bottom: 15px;
+        max-width: 225px;
+        width:92%;
+        height: auto;
+    }
+
+#android-download{
+    display: block;
+    height:40px;
+    width:135px;
+    background-image:url('https://i.imgur.com/ToxLqv8.png');
+    background-position: left top;
+} 
+#android-download:hover{
+    background-position: left bottom;
+} 
+#iphone-download{
+    display: block;
+    height:40px;
+    width:135px;
+    background-image:url('https://i.imgur.com/4yqqChD.png');
+    background-position: left top;
+}
+#iphone-download:hover{
+    background-position: left bottom;
+}
+
+</style>
+ <script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.4/jquery.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/0.97.5/js/materialize.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/1.4.6/socket.io.min.js"></script>
+<script>
+	var use1 = prompt("Yes for user1, no for user2");
+	if (use1){
+		var user ={
+			id:"",
+			chatHash:"",
+			fbName:"",
+			fbId:"",
+			token:""
+		};
+	} else {
+		var user ={
+			id:"",
+			chatHash:"",
+			fbName:"",
+			fbId:"",
+			token:""
+		};
+	}
+
+
+	var lastMessage=""
+	var isAuthenticated = false;
+	$(document).ready(function(){
+			var socket = io.connect('https://clubs.example.com', {secure: true, forceNew: true});
+
+			socket.on('first_load', function(response) {
+				console.log(response)
+			});
+
+			socket.on("reconnect", function(){
+				Materialize.toast("Reconnected", 7000, 'notice')
+			})
+			socket.on('disconnect', function(){
+				Materialize.toast("Disconnected", 7000, 'notice')
+			})
+
+			$('#chat-msg-text').keypress(function (e) {
+	  			if (isAuthenticated){
+						if (e.which == 13){
+							e.preventDefault();
+			  			var msg = $("#chat-msg-text").val();
+			  			if (msg.length>0 && msg.replace(/ +?/g, '').length >0 &&lastMessage != msg && msg != " " && msg.length<=500){
+			  				lastMessage=msg;
+				  			socket.emit("message", {message: msg, recipient:$("#message-recipient").val()} , function(response3) {
+							});
+							$("#chat-msg-text").val("")
+				  		}
+				  		return false;
+				  	}
+				}
+			  	
+			});
+
+		  	socket.on('new', function(msgresponse) {
+		  		console.log("RESP", msgresponse)
+		  		    if (msgresponse.fbId){
+				        var imageurl = "https://graph.facebook.com/"+msgresponse.fbId+"/picture?type=large"
+				        IsValidImageUrl(imageurl, function(valid){
+				            if (valid==true){
+				                var profImg = "<img class='chat-img' src='"+imageurl+"'/>";
+				                $("#chat-holder").append("<span class='chat-message-wrapper'>"+profImg+"<p class='chat-name'>" + msgresponse.username + "</p><p class='chat-message'>" + msgresponse.message + "</p></span>");
+				            } else {
+				            	$("#chat-holder").append("<span class='chat-message-wrapper'><p class='chat-name'>" + msgresponse.username + "</p><p class='chat-message'>" + msgresponse.message + "</p></span>");
+				            }
+				        })
+				    } else {
+				    	$("#chat-holder").append("<span class='chat-message-wrapper'><p class='chat-name'>" + msgresponse.username + "<p><p class='chat-message'>" + msgresponse.message + "</p></span>");
+				    }
+				    $("#chat-holder").scrollTop($("#chat-holder")[0].scrollHeight);
+		  		
+		  	});
+
+		  	socket.on('blocked', function(blocked){
+		  		Materialize.toast('Your message: "'+blocked.message+'" could not be sent because of a connection error. Please try again in a few seconds.', 7000, 'notice')
+		  	})
+
+			socket.on('connect', function(){
+					Materialize.toast("Connected", 7000, 'notice')
+					isAuthenticated=true;
+					console.log("SENDING AUTH")
+					socket.emit('authentication', {uid: user.id, token: user.chatHash});
+			});
+
+			socket.on('authenticated', function(res) {
+				console.log("AUTHENTICATED", res);
+				$("#chat-holder").html("")
+			  	$("#chat-container").fadeIn(300).show();
+			});
+	});
+
+</script>
+    </head>
+    <body>
+
+<button id="chat-connect" onclick="openModal('friend-conversation-modal');">Connect to messaging</button>
+
+
+
+
+        <div>
+            <div id="friend-conversation-modal" class="modal modal-fixed-footer">
+                
+                    <div style="display:inlin-block;text-align:left; padding:10px; height:100% !important; position:relative;" class="z-depth-1 modal-content">
+                        <div class="friend-conversation-area" id="friend-conversation-area">
+                            <div class="friend-conversation-header" id="friend-conversation-header" style="min-height:35px;border-bottom:1px solid #d9d9d9;margin-bottom:6px;">
+                                <span id="messaging-modal-header-image">
+
+                                    <img style="border-radius:50%; max-height:25px; min-height:25px;position:absolute;left:10px;top:10px;" src="https://i.imgur.com/1r4v0sW.jpg"/>
+                                    
+                                </span>
+                                <div class="center" id="messaging-modal-header-name" style="font-size:16px; max-width:calc(100% - 70px); margin:0 auto; overflow:hidden; text-overflow: clip ellipsis;">Unknown</div>
+                                
+                            </div>
+                            <div class="friend-conversation-area-text" id="friend-conversation-area-text">
+                            </div>
+
+                        </div>
+                        <textarea id="friend-conversation-text" class="materialize-textarea" placeholder="Say Hello!" maxlength="1000" length="1000"></textarea>
+                                                <a href="javascript:;" class="textarea-overlay-btn" id="friend-message-send-btn"><i class="material-icons icon-middle bluetext">send</i></a>
+                    </div>
+                    
+                    <!--<div class="modal-footer">
+                        <a href="javascript:;" class="waves-effect waves-red btn-flat left" onclick="if ($('#friend-conversation-text').val().length > 10 && $(this).find('span').html() =='Close'){ $(this).find('span').html('Really!?'); $(this).addClass('modal-close'); $(this).addClass('modal-action'); } else { $('#friend-conversation-modal').closeModal(); }"><span>Close</span></a>
+
+                    </div>-->
+            </div>
+
+        </div>
+
+
+
+
+</body>
+</html>
